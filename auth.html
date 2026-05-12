@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UC Conecta | Login & Register</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="auth-page">
+    <a class="back-link" href="index.html">← Back to landing</a>
+    <section class="auth-card">
+      <h1>Welcome</h1>
+      <div class="auth-switch">
+        <button id="login-tab" class="btn small" type="button">Login</button>
+        <button id="register-tab" class="btn btn-outline small" type="button">Register</button>
+      </div>
+
+      <form id="login-form" class="auth-form">
+        <label>Email
+          <input type="email" name="email" required placeholder="you@example.com" />
+        </label>
+        <label>Password
+          <input type="password" name="password" required minlength="6" placeholder="••••••" />
+        </label>
+        <button class="btn" type="submit">Login</button>
+      </form>
+
+      <form id="register-form" class="auth-form hidden">
+        <label>Name
+          <input type="text" name="name" required placeholder="Your name" />
+        </label>
+        <label>Email
+          <input type="email" name="email" required placeholder="you@example.com" />
+        </label>
+        <label>Password
+          <input type="password" name="password" required minlength="6" placeholder="Create a password" />
+        </label>
+        <button class="btn" type="submit">Create account</button>
+      </form>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
