@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #1b3d3f;
+  --color-accent: #c8e642;
+  --color-green-mid: #60d385;
+  --color-green-light: #eafaf0;
+  --color-lavender: #d8b4fe;
+  --color-lavender-light: #edeafc;
+  --color-bg: #f0faf4;
+  --color-surface: #ffffff;
+  --color-text: #1b3d3f;
+  --color-muted: #6b7280;
+}
+
+@layer base {
+  html {
+    @apply font-sans text-foreground antialiased;
+  }
+
+  body {
+    @apply min-h-screen bg-app-bg text-base font-normal;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-bold text-primary;
+  }
+
+  h1 {
+    @apply text-3xl sm:text-4xl font-extrabold tracking-tight;
+  }
+
+  h2 {
+    @apply text-2xl sm:text-3xl font-bold;
+  }
+
+  h3 {
+    @apply text-xl sm:text-2xl font-semibold;
+  }
+}
