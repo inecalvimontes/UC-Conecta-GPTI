@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { formatClp, formatEventDate } from '../utils/format.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { shareOnWhatsApp } from '../utils/share.js';
+import { toPng } from 'html-to-image';
 
 function IconCalendar({ className }) {
   return (
@@ -54,9 +56,111 @@ function IconCheckCircle({ className }) {
   );
 }
 
+function IconShare({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M19 1H5c-3.314 0-6 2.686-6 6v6c0 3.314 2.686 6 6 6h5v4l9-8V7c0-3.314-2.686-6-6-6z" />
+    </svg>
+  );
+}
+
+function StoryCard({ event }) {
+  const cover = event?.image || '';
+  const eventDate = event?.date ? new Date(event.date) : null;
+  const dateText = eventDate
+    ? eventDate.toLocaleDateString('es-CL', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      })
+    : 'Fecha por confirmar';
+
+  return (
+    <div
+      style={{
+        width: 1080,
+        height: 1920,
+        fontFamily: 'Inter, Segoe UI, Segoe UI Emoji, Noto Color Emoji, Apple Color Emoji, sans-serif',
+      }}
+      className="relative overflow-hidden bg-app-surface text-primary"
+    >
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: cover ? `url('${cover}')` : 'linear-gradient(180deg, #60d385 0%, #d8b4fe 100%)',
+          filter: 'brightness(0.72)',
+        }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/20 to-black/75" />
+
+      <div className="relative flex h-full flex-col justify-between p-16 text-white">
+        <div className="flex items-center justify-between text-sm font-semibold uppercase tracking-[0.3em] text-white/90">
+          <span>UConecta</span>
+          <span>Story</span>
+        </div>
+
+        <div className="space-y-8">
+          <div className="space-y-5">
+            <span className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold uppercase tracking-wide backdrop-blur">
+              {event?.category || 'Evento'}
+            </span>
+            <h1 className="max-w-[14ch] text-6xl font-black leading-[0.95] text-white drop-shadow-xl">
+              {event?.title || 'Evento sin título'}
+            </h1>
+          </div>
+
+          <div className="space-y-4 rounded-[2rem] border border-white/15 bg-white/10 p-6 backdrop-blur-md">
+            <div className="flex items-start gap-4">
+              <div className="mt-1 text-2xl">📆</div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Fecha y hora</p>
+                <p className="mt-1 text-xl font-semibold">
+                  {dateText} · {event?.time || 'Hora por confirmar'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4">
+              <div className="mt-1 text-2xl">📍</div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Lugar</p>
+                <p className="mt-1 text-xl font-semibold">{event?.location || 'Lugar por definir'}</p>
+              </div>
+            </div>
+
+            {event?.url ? (
+              <div className="flex items-start gap-4">
+                <div className="mt-1 text-2xl">🔗</div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Más información</p>
+                  <p className="mt-1 truncate text-xl font-semibold">{event.url}</p>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex items-end justify-between gap-6">
+          <div className="max-w-[18rem] text-sm leading-6 text-white/80">
+            Comparte este evento en Instagram Stories o descarga la imagen para enviarla por WhatsApp.
+          </div>
+          <div className="rounded-2xl bg-white p-4 text-right text-sm font-bold text-primary shadow-2xl">
+            @uconecta
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EventModal({ event, isOpen, onClose }) {
   const [success, setSuccess] = useState(false);
   const { isAuthenticated, isSubscribed, subscribe, unsubscribe } = useAuth();
+  const storyRef = useRef(null);
+  const [showStory, setShowStory] = useState(false);
+  const [generatingStory, setGeneratingStory] = useState(false);
+  const [storyDataUrl, setStoryDataUrl] = useState(null);
+  const [sharingStory, setSharingStory] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -89,6 +193,76 @@ export default function EventModal({ event, isOpen, onClose }) {
     } else {
       subscribe(event.id);
       setSuccess(true);
+    }
+  };
+
+  const generateStoryImage = async () => {
+    if (!storyRef.current) return;
+    setGeneratingStory(true);
+    try {
+      // html-to-image respects the element's size; StoryCard renders at 1080x1920
+      const dataUrl = await toPng(storyRef.current, { cacheBust: true, pixelRatio: 2 });
+      setStoryDataUrl(dataUrl);
+    } catch (err) {
+      console.error('Error generating story image', err);
+      alert('Error al generar la imagen. Intenta nuevamente.');
+    } finally {
+      setGeneratingStory(false);
+    }
+  };
+
+  const downloadStoryImage = () => {
+    const url = storyDataUrl;
+    if (!url) return;
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `uconecta_${event.id}_story.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+
+  const dataUrlToFile = async (dataUrl, fileName) => {
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+    return new File([blob], fileName, { type: blob.type || 'image/png' });
+  };
+
+  const shareStoryImage = async () => {
+    if (!storyDataUrl) return;
+
+    const fileName = `uconecta_${event.id}_story.png`;
+    const shareTitle = event.title || 'UConecta';
+    const shareText = [
+      '¡Te comparto este evento!',
+      '',
+      event.title || 'Evento',
+      event.date ? `Fecha: ${event.date}` : null,
+      event.time ? `Hora: ${event.time}` : null,
+      event.location ? `Ubicación: ${event.location}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    try {
+      setSharingStory(true);
+      const file = await dataUrlToFile(storyDataUrl, fileName);
+
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          files: [file],
+        });
+        return;
+      }
+
+      downloadStoryImage();
+    } catch (error) {
+      console.error('Error sharing story image', error);
+      downloadStoryImage();
+    } finally {
+      setSharingStory(false);
     }
   };
 
@@ -205,20 +379,100 @@ export default function EventModal({ event, isOpen, onClose }) {
             </div>
           ) : (
             <div className="mt-8 rounded-2xl border border-green-light bg-green-light/30 p-4 sm:p-5">
-              <button
-                type="button"
-                onClick={handleSubscribe}
-                className={`w-full rounded-full py-3.5 text-center text-sm font-bold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
-                  userIsSubscribed
-                    ? 'border-2 border-green-mid text-green-mid hover:bg-green-mid/10'
-                    : 'bg-green-mid text-app-surface hover:brightness-105 focus-visible:outline-green-mid'
-                }`}
-              >
-                {userIsSubscribed ? '✓ Suscrito' : 'Suscribirse →'}
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleSubscribe}
+                  className={`flex-1 rounded-full py-3.5 text-center text-sm font-bold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                    userIsSubscribed
+                      ? 'border-2 border-green-mid text-green-mid hover:bg-green-mid/10'
+                      : 'bg-green-mid text-app-surface hover:brightness-105 focus-visible:outline-green-mid'
+                  }`}
+                >
+                  {userIsSubscribed ? '✓ Suscrito' : 'Suscribirse →'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => shareOnWhatsApp(event)}
+                  className="flex items-center justify-center rounded-full border-2 border-green-mid px-5 py-3.5 text-green-mid transition hover:bg-green-mid/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-mid"
+                  title="Compartir por WhatsApp"
+                  aria-label="Compartir por WhatsApp"
+                >
+                  <IconShare className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowStory(true);
+                    setStoryDataUrl(null);
+                  }}
+                  className="ml-2 flex items-center justify-center rounded-full border-2 border-green-mid px-4 py-3.5 text-green-mid transition hover:bg-green-mid/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-mid"
+                  title="Crear Story"
+                  aria-label="Crear Story"
+                >
+                  Crear Story
+                </button>
+              </div>
             </div>
           )}
         </div>
+        {showStory && (
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setShowStory(false);
+            }}
+          >
+            <div className="max-w-md rounded-xl bg-app-surface p-4 shadow-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-bold">Vista previa - Story (9:16)</h3>
+                <button type="button" onClick={() => setShowStory(false)} className="text-sm text-muted">Cerrar</button>
+              </div>
+
+              <div className="mb-3 flex justify-center">
+                <div style={{ width: 270, height: 480, overflow: 'hidden', borderRadius: 16, border: '1px solid rgba(0,0,0,0.06)' }}>
+                  <div style={{ width: 1080, height: 1920, transform: 'scale(0.25)', transformOrigin: 'top left' }}>
+                    <StoryCard event={event} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {!storyDataUrl ? (
+                  <button
+                    type="button"
+                    onClick={generateStoryImage}
+                    disabled={generatingStory}
+                    className="flex-1 rounded-full bg-green-mid py-2 text-sm font-semibold text-app-surface disabled:opacity-60"
+                  >
+                    {generatingStory ? 'Generando...' : 'Generar imagen'}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={shareStoryImage}
+                      disabled={sharingStory}
+                      className="flex-1 rounded-full bg-green-mid py-2 text-sm font-semibold text-app-surface disabled:opacity-60"
+                    >
+                      {sharingStory ? 'Compartiendo...' : 'Share Image'}
+                    </button>
+                    <button type="button" onClick={downloadStoryImage} className="flex-1 rounded-full bg-accent py-2 text-sm font-semibold text-primary">
+                      Descargar PNG
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Hidden full-size node for html-to-image to capture */}
+              <div style={{ position: 'absolute', left: -9999, top: 0, width: 1080, height: 1920 }} aria-hidden>
+                <div ref={storyRef}>
+                  <StoryCard event={event} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
