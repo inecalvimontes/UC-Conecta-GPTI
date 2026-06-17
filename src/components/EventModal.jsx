@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatClp, formatEventDate } from '../utils/format.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 function IconCalendar({ className }) {
   return (
@@ -55,6 +56,7 @@ function IconCheckCircle({ className }) {
 
 export default function EventModal({ event, isOpen, onClose }) {
   const [success, setSuccess] = useState(false);
+  const { isAuthenticated, isSubscribed, subscribe, unsubscribe } = useAuth();
 
   useEffect(() => {
     if (isOpen) {
@@ -79,9 +81,15 @@ export default function EventModal({ event, isOpen, onClose }) {
   if (!isOpen || !event) return null;
 
   const pct = Math.min(100, Math.round((event.registered / event.capacity) * 100));
+  const userIsSubscribed = isSubscribed(event.id);
 
-  const handleRegister = () => {
-    setSuccess(true);
+  const handleSubscribe = () => {
+    if (userIsSubscribed) {
+      unsubscribe(event.id);
+    } else {
+      subscribe(event.id);
+      setSuccess(true);
+    }
   };
 
   return (
@@ -180,32 +188,34 @@ export default function EventModal({ event, isOpen, onClose }) {
             <div className="mt-8 flex gap-3 rounded-2xl border border-green-mid/20 bg-green-light p-4">
               <IconCheckCircle className="h-6 w-6 shrink-0 text-green-mid" />
               <p className="text-sm font-medium leading-snug text-primary">
-                ¡Inscripción registrada! Te enviaremos un correo a tu mail UC.
+                ¡Te has suscrito al evento! Recibirás notificaciones sobre cambios.
               </p>
+            </div>
+          ) : !isAuthenticated ? (
+            <div className="mt-8 rounded-2xl border border-green-light bg-green-light/30 p-4 sm:p-5">
+              <p className="text-sm font-medium text-primary mb-3">
+                Inicia sesión para suscribirte a este evento
+              </p>
+              <a
+                href="/login"
+                className="block w-full rounded-full bg-accent py-3.5 text-center text-sm font-bold text-primary shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Iniciar sesión
+              </a>
             </div>
           ) : (
             <div className="mt-8 rounded-2xl border border-green-light bg-green-light/30 p-4 sm:p-5">
-              {event.isPaid ? (
-                <>
-                  <p className="text-3xl font-extrabold text-primary">${formatClp(event.price)} CLP</p>
-                  <p className="mt-1 text-sm text-muted">Pago seguro via WebPay</p>
-                  <button
-                    type="button"
-                    onClick={handleRegister}
-                    className="mt-4 w-full rounded-full bg-accent py-3.5 text-center text-sm font-bold text-primary shadow-sm transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                  >
-                    Inscribirse y Pagar →
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleRegister}
-                  className="w-full rounded-full bg-green-mid py-3.5 text-center text-sm font-bold text-app-surface shadow-sm transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-mid"
-                >
-                  Inscribirse gratis →
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleSubscribe}
+                className={`w-full rounded-full py-3.5 text-center text-sm font-bold shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                  userIsSubscribed
+                    ? 'border-2 border-green-mid text-green-mid hover:bg-green-mid/10'
+                    : 'bg-green-mid text-app-surface hover:brightness-105 focus-visible:outline-green-mid'
+                }`}
+              >
+                {userIsSubscribed ? '✓ Suscrito' : 'Suscribirse →'}
+              </button>
             </div>
           )}
         </div>

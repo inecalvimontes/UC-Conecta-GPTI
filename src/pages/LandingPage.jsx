@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import { mockEvents } from '../data/mockEvents.js';
 import EventCard from '../components/EventCard.jsx';
 import EventModal from '../components/EventModal.jsx';
@@ -58,6 +59,7 @@ const featured = mockEvents.slice(0, 3);
 
 export default function LandingPage() {
   const [selected, setSelected] = useState(null);
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="bg-app-surface">
@@ -88,10 +90,10 @@ export default function LandingPage() {
                 Explorar Eventos →
               </Link>
               <Link
-                to="/login"
+                to={isAuthenticated ? '/mis-eventos' : '/login'}
                 className="inline-flex items-center justify-center rounded-full border-2 border-primary px-6 py-3 text-center text-sm font-semibold text-primary transition hover:bg-green-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
-                ¿Ya tienes cuenta? Inicia sesión
+                {isAuthenticated ? 'Ir a Mis Eventos →' : '¿Ya tienes cuenta? Inicia sesión'}
               </Link>
             </div>
           </div>
@@ -211,10 +213,10 @@ export default function LandingPage() {
         <div className="relative mx-auto max-w-3xl px-4 text-center sm:px-6">
           <h2 className="text-2xl font-extrabold text-app-surface sm:text-3xl">¿Listo para conectar con tu U?</h2>
           <Link
-            to="/register"
+            to={isAuthenticated ? '/mis-eventos' : '/register'}
             className="mt-8 inline-flex items-center justify-center rounded-full bg-accent px-10 py-3.5 text-sm font-bold text-primary shadow-lg transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-app-surface"
           >
-            Crear mi cuenta
+            {isAuthenticated ? 'Ver Mis Eventos' : 'Crear mi cuenta'}
           </Link>
         </div>
       </section>

@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { mockEvents } from '../data/mockEvents.js';
 import EventCard from '../components/EventCard.jsx';
 import EventModal from '../components/EventModal.jsx';
+import FilterPanel from '../components/FilterPanel.jsx';
 
-const CATEGORIES = ['Todos', 'Cultura', 'Deportes', 'Académico', 'Social', 'Tecnología'];
+const CATEGORIES = ['Cultura', 'Deportes', 'Académico', 'Social', 'Tecnología'];
 
 function IconSearch({ className }) {
   return (
@@ -23,21 +24,70 @@ function normalize(s) {
 
 export default function ExplorePage() {
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('Todos');
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [priceType, setPriceType] = useState('all');
+  const [dateRange, setDateRange] = useState({ from: '', to: '' });
+  const [availabilityOnly, setAvailabilityOnly] = useState(false);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [selected, setSelected] = useState(null);
+
+  // Extract all unique tags from events
+  const allTags = useMemo(() => {
+    const tags = new Set();
+    mockEvents.forEach((event) => {
+      event.tags?.forEach((tag) => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, []);
 
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
+    
     return mockEvents.filter((ev) => {
-      const catOk = category === 'Todos' || ev.category === category;
-      if (!catOk) return false;
-      if (!q) return true;
-      const hay = normalize(
-        [ev.title, ev.description, ev.location, ev.organizer, ev.category, ...(ev.tags || [])].join(' '),
-      );
-      return hay.includes(q);
+      // Text search filter
+      if (q) {
+        const hay = normalize(
+          [ev.title, ev.description, ev.location, ev.organizer, ev.category, ...(ev.tags || [])].join(' '),
+        );
+        if (!hay.includes(q)) return false;
+      }
+
+      // Category filter
+      if (selectedCategories.length > 0 && !selectedCategories.includes(ev.category)) {
+        return false;
+      }
+
+      // Price filter
+      if (priceType === 'free' && ev.isPaid) return false;
+      if (priceType === 'paid' && !ev.isPaid) return false;
+
+      // Date range filter
+      if (dateRange.from && ev.date < dateRange.from) return false;
+      if (dateRange.to && ev.date > dateRange.to) return false;
+
+      // Availability filter
+      if (availabilityOnly && ev.registered >= ev.capacity) return false;
+
+      // Tags filter
+      if (selectedTags.length > 0) {
+        const hasMatchingTag = selectedTags.some((tag) =>
+          ev.tags?.includes(tag)
+        );
+        if (!hasMatchingTag) return false;
+      }
+
+      return true;
     });
-  }, [query, category]);
+  }, [query, selectedCategories, priceType, dateRange, availabilityOnly, selectedTags]);
+
+  const handleResetFilters = () => {
+    setSelectedCategories([]);
+    setPriceType('all');
+    setDateRange({ from: '', to: '' });
+    setAvailabilityOnly(false);
+    setSelectedTags([]);
+    setQuery('');
+  };
 
   return (
     <div className="min-h-[60vh] bg-app-surface">
@@ -70,40 +120,45 @@ export default function ExplorePage() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIES.map((c) => {
-            const active = category === c;
-            return (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={[
-                  'rounded-full px-4 py-2 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-                  active
-                    ? 'bg-accent font-semibold text-primary shadow-sm'
-                    : 'bg-lavender-light font-medium text-primary hover:opacity-90',
-                ].join(' ')}
-              >
-                {c}
-              </button>
-            );
-          })}
-        </div>
-
-        <p className="mt-6 text-sm text-muted">
-          {filtered.length} evento{filtered.length === 1 ? '' : 's'} encontrado{filtered.length === 1 ? '' : 's'}
-        </p>
-
-        <div className="mt-6 rounded-3xl bg-green-light/60 p-4 sm:bg-green-light/50 sm:p-6 md:p-8">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((ev) => (
-              <EventCard key={ev.id} event={ev} onOpenDetails={setSelected} />
-            ))}
+        <div className="grid gap-8 lg:grid-cols-4">
+          {/* Filter Panel */}
+          <div className="lg:col-span-1">
+            <FilterPanel
+              categories={CATEGORIES}
+              selectedCategories={selectedCategories}
+              onCategoriesChange={setSelectedCategories}
+              priceType={priceType}
+              onPriceTypeChange={setPriceType}
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+              availabilityOnly={availabilityOnly}
+              onAvailabilityChange={setAvailabilityOnly}
+              selectedTags={selectedTags}
+              onTagsChange={setSelectedTags}
+              availableTags={allTags}
+              onReset={handleResetFilters}
+            />
           </div>
-          {filtered.length === 0 && (
-            <p className="py-12 text-center text-muted">No hay eventos que coincidan con tu búsqueda.</p>
-          )}
+
+          {/* Events */}
+          <div className="lg:col-span-3">
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-muted">
+                {filtered.length} evento{filtered.length === 1 ? '' : 's'} encontrado{filtered.length === 1 ? '' : 's'}
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-green-light/60 p-4 sm:bg-green-light/50 sm:p-6 md:p-8">
+              <div className="grid gap-6 sm:grid-cols-2 auto-rows-max">
+                {filtered.map((ev) => (
+                  <EventCard key={ev.id} event={ev} onOpenDetails={setSelected} />
+                ))}
+              </div>
+              {filtered.length === 0 && (
+                <p className="py-12 text-center text-muted">No hay eventos que coincidan con tus filtros.</p>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 

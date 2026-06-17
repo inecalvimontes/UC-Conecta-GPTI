@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 
 function LogoMark() {
   return (
@@ -22,8 +23,15 @@ const navLinkClass = ({ isActive }) =>
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const closeMenu = () => setMenuOpen(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-green-light bg-app-surface shadow-nav">
@@ -45,21 +53,40 @@ export default function Navbar() {
           <NavLink to="/explorar" className={navLinkClass}>
             Explorar Eventos
           </NavLink>
+          {isAuthenticated && (
+            <NavLink to="/mis-eventos" className={navLinkClass}>
+              Mis Eventos
+            </NavLink>
+          )}
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">
-          <Link
-            to="/login"
-            className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-green-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            Iniciar sesión
-          </Link>
-          <Link
-            to="/register"
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            Registrarse
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <span className="text-sm text-muted">Hola, {user?.name}</span>
+              <button
+                onClick={handleLogout}
+                className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-green-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Salir
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="rounded-lg border-2 border-primary px-4 py-2 text-sm font-semibold text-primary transition-colors hover:bg-green-light focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Iniciar sesión
+              </Link>
+              <Link
+                to="/register"
+                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-opacity hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                Registrarse
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -95,21 +122,43 @@ export default function Navbar() {
             <NavLink to="/explorar" className={navLinkClass} onClick={closeMenu}>
               Explorar Eventos
             </NavLink>
+            {isAuthenticated && (
+              <NavLink to="/mis-eventos" className={navLinkClass} onClick={closeMenu}>
+                Mis Eventos
+              </NavLink>
+            )}
             <div className="mt-3 flex flex-col gap-2 border-t border-green-light pt-3">
-              <Link
-                to="/login"
-                className="rounded-lg border-2 border-primary px-4 py-2.5 text-center text-sm font-semibold text-primary hover:bg-green-light"
-                onClick={closeMenu}
-              >
-                Iniciar sesión
-              </Link>
-              <Link
-                to="/register"
-                className="rounded-lg bg-accent px-4 py-2.5 text-center text-sm font-semibold text-primary hover:opacity-90"
-                onClick={closeMenu}
-              >
-                Registrarse
-              </Link>
+              {isAuthenticated ? (
+                <>
+                  <span className="px-3 py-2 text-sm text-muted">Hola, {user?.name}</span>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      closeMenu();
+                    }}
+                    className="rounded-lg border-2 border-primary px-4 py-2.5 text-center text-sm font-semibold text-primary hover:bg-green-light"
+                  >
+                    Salir
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="rounded-lg border-2 border-primary px-4 py-2.5 text-center text-sm font-semibold text-primary hover:bg-green-light"
+                    onClick={closeMenu}
+                  >
+                    Iniciar sesión
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="rounded-lg bg-accent px-4 py-2.5 text-center text-sm font-semibold text-primary hover:opacity-90"
+                    onClick={closeMenu}
+                  >
+                    Registrarse
+                  </Link>
+                </>
+              )}
             </div>
           </nav>
         </div>

@@ -9,7 +9,7 @@ function isUCEmail(email) {
   return UC_DOMAINS.some((domain) => lower.endsWith(domain));
 }
 
-function loadUser() {
+function loadUserData() {
   try {
     const raw = localStorage.getItem('uconecta_user');
     return raw ? JSON.parse(raw) : null;
@@ -18,27 +18,31 @@ function loadUser() {
   }
 }
 
-function saveUser(user) {
-  if (user) {
-    localStorage.setItem('uconecta_user', JSON.stringify(user));
+function saveUserData(userData) {
+  if (userData) {
+    localStorage.setItem('uconecta_user', JSON.stringify(userData));
   } else {
     localStorage.removeItem('uconecta_user');
   }
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(loadUser);
-  const isAuthenticated = Boolean(user);
+  const [userData, setUserData] = useState(loadUserData);
+  const isAuthenticated = Boolean(userData?.user);
 
   const login = useCallback(async (email, _password) => {
     if (!isUCEmail(email)) {
       throw new Error('Solo puedes iniciar sesión con un correo @uc.cl o @estudiante.uc.cl');
     }
     await new Promise((r) => setTimeout(r, 1000));
-    const loggedUser = { email: email.toLowerCase().trim(), name: email.split('@')[0] };
-    setUser(loggedUser);
-    saveUser(loggedUser);
-    return loggedUser;
+    const user = { email: email.toLowerCase().trim(), name: email.split('@')[0] };
+    const newUserData = {
+      user,
+      subscriptions: [],
+    };
+    setUserData(newUserData);
+    saveUserData(newUserData);
+    return user;
   }, []);
 
   const register = useCallback(async ({ name, email, password, carrera }) => {
@@ -46,24 +50,64 @@ export function AuthProvider({ children }) {
       throw new Error('Solo puedes registrarte con un correo @uc.cl o @estudiante.uc.cl');
     }
     await new Promise((r) => setTimeout(r, 1000));
-    const newUser = {
+    const user = {
       email: email.toLowerCase().trim(),
       name: name.trim(),
       carrera,
     };
-    setUser(newUser);
-    saveUser(newUser);
-    return newUser;
+    const newUserData = {
+      user,
+      subscriptions: [],
+    };
+    setUserData(newUserData);
+    saveUserData(newUserData);
+    return user;
   }, []);
 
   const logout = useCallback(() => {
-    setUser(null);
-    saveUser(null);
+    setUserData(null);
+    saveUserData(null);
   }, []);
 
+  const subscribe = useCallback((eventId) => {
+    setUserData((prev) => {
+      if (!prev) return prev;
+      const subscriptions = prev.subscriptions.includes(eventId)
+        ? prev.subscriptions
+        : [...prev.subscriptions, eventId];
+      const newUserData = { ...prev, subscriptions };
+      saveUserData(newUserData);
+      return newUserData;
+    });
+  }, []);
+
+  const unsubscribe = useCallback((eventId) => {
+    setUserData((prev) => {
+      if (!prev) return prev;
+      const subscriptions = prev.subscriptions.filter((id) => id !== eventId);
+      const newUserData = { ...prev, subscriptions };
+      saveUserData(newUserData);
+      return newUserData;
+    });
+  }, []);
+
+  const isSubscribed = useCallback((eventId) => {
+    return userData?.subscriptions.includes(eventId) ?? false;
+  }, [userData]);
+
   const value = useMemo(
-    () => ({ user, isAuthenticated, login, register, logout }),
-    [user, isAuthenticated, login, register, logout],
+    () => ({
+      user: userData?.user || null,
+      isAuthenticated,
+      subscriptions: userData?.subscriptions || [],
+      login,
+      register,
+      logout,
+      subscribe,
+      unsubscribe,
+      isSubscribed,
+    }),
+    [userData, isAuthenticated, login, register, logout, subscribe, unsubscribe, isSubscribed],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

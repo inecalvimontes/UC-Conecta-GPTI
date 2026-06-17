@@ -3,6 +3,7 @@ import Navbar from './components/Navbar.jsx';
 import Footer from './components/Footer.jsx';
 import LandingPage from './pages/LandingPage.jsx';
 import ExplorePage from './pages/ExplorePage.jsx';
+import MyEventsPage from './pages/MyEventsPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 
@@ -14,6 +15,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/explorar" element={<ExplorePage />} />
+          <Route path="/mis-eventos" element={<MyEventsPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Routes>
